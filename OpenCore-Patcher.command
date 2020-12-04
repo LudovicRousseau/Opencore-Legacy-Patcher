@@ -53,7 +53,7 @@ while MainMenu:
     print("    5.  Exit")
     print("")
 
-    MainMenu = raw_input('Please select an option: ')
+    MainMenu = input('Please select an option: ')
 
     if MainMenu=="1":
         OpenCoreBuilderMenu=True
@@ -69,7 +69,7 @@ while MainMenu:
             print("   3.  Return to main menu")
             print("")
 
-            OpenCoreBuilderMenu = raw_input('Please select an option: ')
+            OpenCoreBuilderMenu = input('Please select an option: ')
 
             if OpenCoreBuilderMenu=="1":
                 AutoBuilderMenu=True
@@ -91,7 +91,7 @@ while MainMenu:
                     print("Your OpenCore EFI has been built at:")
                     print("    %s" % Versions.opencore_path_done)
                     print("")
-                    AutoBuilderMenu = raw_input("Press any key to return to previous menu: ")
+                    AutoBuilderMenu = input("Press any key to return to previous menu: ")
                     if AutoBuilderMenu=="1":
                         print("Returning to previous menu...")
                         AutoBuilderMenu=False
@@ -106,7 +106,7 @@ while MainMenu:
                     print("")
                     print("  Supported versions: 0.6.3, 0.6.4")
                     print("")
-                    OpenCoreOption = raw_input('Please enter the OpenCore you want (Press enter to exit): ')
+                    OpenCoreOption = input('Please enter the OpenCore you want (Press enter to exit): ')
                     if OpenCoreOption == "":
                         print("Exiting...")
                         ChangeOCversion=False
@@ -115,7 +115,7 @@ while MainMenu:
                         print("")
                         print("  New SMBIOS: %s" % OpenCoreOption)
                         print("")
-                        ChangeOCversionYN = raw_input("Is this correcy? (y/n)")
+                        ChangeOCversionYN = input("Is this correcy? (y/n)")
                         if ChangeOCversionYN in {"y", "Y", "yes", "Yes"}:
                             ChangeOCversion=False
                             Versions.opencore_version = OpenCoreOption
@@ -143,7 +143,7 @@ while MainMenu:
             print("   2.  Return to main menu")
             print("")
 
-            OpenCoreInstallerMenu = raw_input('Please select an option: ')
+            OpenCoreInstallerMenu = input('Please select an option: ')
 
             if OpenCoreInstallerMenu=="1":
                 os.system('clear')
@@ -156,7 +156,7 @@ while MainMenu:
                     print("OpenCore folder missing!")
                     print("Please build OpenCore first")
                     print("")
-                OpenCoreInstallerMenu = raw_input("Press any key to exit: ")
+                OpenCoreInstallerMenu = input("Press any key to exit: ")
                 if OpenCoreInstallerMenu=="1":
                     print("Returning to main menu...")
                     OpenCoreInstallerMenu=False
@@ -181,7 +181,7 @@ while MainMenu:
             print("")
             print("  system_profiler SPHardwareDataType | grep 'Model Identifier'")
             print("")
-            SMBIOSOption = raw_input('Please enter the SMBIOS of your machine (Press enter to exit): ')
+            SMBIOSOption = input('Please enter the SMBIOS of your machine (Press enter to exit): ')
             if SMBIOSOption == "":
                 print("Exiting...")
                 SMBIOSMenu=False
@@ -190,7 +190,7 @@ while MainMenu:
                 print("")
                 print("  New SMBIOS: %s" % SMBIOSOption)
                 print("")
-                SMBIOSMenuYN = raw_input("Is this correcy? (y/n)")
+                SMBIOSMenuYN = input("Is this correcy? (y/n)")
                 if SMBIOSMenuYN in {"y", "Y", "yes", "Yes"}:
                     SMBIOSMenu=False
                     BuildOpenCore.current_model = SMBIOSOption
@@ -212,7 +212,7 @@ while MainMenu:
             print("  - Khronokernel: Writing and maintaining this Patcher")
             print("  - Syncretic:    AAAMouSSE and telemetrap")
             print("")
-            CreditMenu = raw_input(" Press any key to exit: ")
+            CreditMenu = input(" Press any key to exit: ")
             print("Returning to main menu...")
             CreditMenu=False
             MainMenu=True

@@ -2,334 +2,217 @@
 
 from __future__ import print_function
 
-from shutil import copy
-from shutil import rmtree
-from distutils.dir_util import copy_tree
-
-import os
+import binascii
 import json
+import os
+import plistlib
+import shutil
 import subprocess
 import sys
+import uuid
 import zipfile
+from distutils.dir_util import copy_tree
+from pathlib import Path
 
-from Resources import Versions
-from Resources import ModelArray
+from Resources import ModelArray, Versions, utilities
+import re
 
 # Find SMBIOS of machine
 current_model = subprocess.Popen("system_profiler SPHardwareDataType".split(), stdout=subprocess.PIPE)
-current_model = [line.strip().split(": ", 1)[1] for line in current_model.stdout.read().split("\n")  if line.strip().startswith("Model Identifier")][0]
+current_model = [line.strip().split(": ", 1)[1] for line in current_model.stdout.read().split("\n") if line.strip().startswith("Model Identifier")][0]
 
-OCExist = False
 
-def BuildEFI():
-    
-    if not os.path.exists(Versions.build_path):
-        os.makedirs(Versions.build_path)
-        print("Created Build Folder")
-    else:
-        print("Build Folder already present, skipping")
-    # Copy OpenCore into Build Folder
-    
-    if os.path.exists(Versions.opencore_path_build):
-        print("Deleting old copy of OpenCore zip")
-        os.remove(Versions.opencore_path_build)
-    if os.path.exists(Versions.opencore_path_done):
-        print("Deleting old copy of OpenCore folder")
-        rmtree(Versions.opencore_path_done)
-    print("")
-    print("- Adding OpenCore v%s" % Versions.opencore_version)
-    copy(Versions.opencore_path, Versions.build_path)
-    zipfile.ZipFile(Versions.opencore_path_build).extractall(Versions.build_path)
+class BuildOpenCore():
+    def __init__(self, model):
+        self.model = model
+        self.config = None
 
-    print("- Adding config.plist v%s" % Versions.opencore_version)
-    # Setup config.plist for editing
-    copy(Versions.plist_path, Versions.plist_path_build)
-    with open(Versions.plist_path_build_full, 'r') as file :
-        Versions.plist_data = file.read()
-
-    print("- Adding Lilu %s" % Versions.lilu_version)
-    copy(Versions.lilu_path, Versions.kext_path_build)
-    
-    print("- Adding WhateverGreen %s" % Versions.whatevergreen_version)
-    copy(Versions.whatevergreen_path, Versions.kext_path_build)
-    
-    # Checks for kexts
-    # CPU Kext Patches
-    if current_model in ModelArray.DualSocket:
-        print("- Adding AppleMCEReporterDisabler v%s" % Versions.mce_version)
-        copy(Versions.mce_path, Versions.kext_path_build)
-        Versions.plist_data = Versions.plist_data.replace(
-            "<false/><!--AppleMCEReporterDisabler-->",
-            "<true/><!--AppleMCEReporterDisabler-->"
-        )
-    
-    if current_model in ModelArray.SSEEmulator:
-        print("- Adding AAAMouSSE v%s" % Versions.mousse_version)
-        copy(Versions.mousse_version, Versions.kext_path_build)
-        Versions.plist_data = Versions.plist_data.replace(
-            "<false/><!--AAAMouSSE-->",
-            "<true/><!--AAAMouSSE-->"
-        )
-    if current_model in ModelArray.MissingSSE42:
-        print("- Adding telemetrap %s" % Versions.telemetrap_version)
-        copy(Versions.telemetrap_path, Versions.kext_path_build)
-        Versions.plist_data = Versions.plist_data.replace(
-            "<false/><!--telemetrap-->",
-            "<true/><!--telemetrap-->"
-        )
-    
-    # Ethernet Patches
-
-    if current_model in ModelArray.EthernetNvidia:
-        print("- Adding nForceEthernet v%s" % Versions.nforce_version)
-        copy(Versions.nforce_path, Versions.kext_path_build)
-        Versions.plist_data = Versions.plist_data.replace(
-            "<false/><!--nForceEthernet-->",
-            "<true/><!--nForceEthernet-->"
-        )
-    if current_model in ModelArray.EthernetMarvell:
-        print("- Adding MarvelYukonEthernet v%s" % Versions.marvel_version)
-        copy(Versions.marvel_path, Versions.kext_path_build)
-        Versions.plist_data = Versions.plist_data.replace(
-            "<false/><!--MarvelYukonEthernet-->",
-            "<true/><!--MarvelYukonEthernet-->"
-        )
-    if current_model in ModelArray.EthernetBroadcom:
-        print("- Adding CatalinaBCM5701Ethernet %s" % Versions.bcm570_version)
-        copy(Versions.bcm570_path, Versions.kext_path_build)
-        Versions.plist_data = Versions.plist_data.replace(
-            "<false/><!--CatalinaBCM5701Ethernet-->",
-            "<true/><!--CatalinaBCM5701Ethernet-->"
-        )
-    
-    # Wifi Patches
-
-    if current_model in ModelArray.WifiAtheros:
-        print("- Adding IO80211HighSierra v%s" % Versions.io80211high_sierra_version)
-        copy(Versions.io80211high_sierra_path, Versions.kext_path_build)
-        Versions.plist_data = Versions.plist_data.replace(
-            "<false/><!--IO80211HighSierra-->",
-            "<true/><!--IO80211HighSierra-->"
-        )
-        Versions.plist_data = Versions.plist_data.replace(
-            "<false/><!--AirPortAtheros40-->",
-            "<true/><!--AirPortAtheros40-->"
-        )
-    #if current_model in ModelArray.WifiBCM94328:
-    #    print("- Wifi patches currently unsupported")
-    #if current_model in ModelArray.WifiBCM94322:
-    #    print("- Adding IO80211Mojave %s" % Versions.io80211mojave_version)
-    #    copy(Versions.io80211mojave_path, Versions.kext_path_build)
-    #    Versions.plist_data = Versions.plist_data.replace(
-    #        "<false/><!--IO80211Mojave-->",
-    #        "<true/><!--IO80211Mojave-->"
-    #    )
-    #    Versions.plist_data = Versions.plist_data.replace(
-    #        "<false/><!--AirPortBrcm4331-->",
-    #        "<true/><!--AirPortBrcm4331-->"
-    #    )
-    #if current_model in ModelArray.WifiBCM943224:
-    #    print("- Adding IO80211Mojave %s" % Versions.io80211mojave_version)
-    #    copy(Versions.io80211mojave_path, Versions.kext_path_build)
-    #    Versions.plist_data = Versions.plist_data.replace(
-    #        "<false/><!--IO80211Mojave-->",
-    #        "<true/><!--IO80211Mojave-->"
-    #    )
-    #    Versions.plist_data = Versions.plist_data.replace(
-    #        "<false/><!--AirPortBrcm4331-->",
-    #        "<true/><!--AirPortBrcm4331-->"
-    #    )
-    if current_model in ModelArray.WifiBCM94331:
-        print("- Adding AirportBrcmFixup and appling fake ID")
-        copy(Versions.airportbcrmfixup_path, Versions.kext_path_build)
-        Versions.plist_data = Versions.plist_data.replace(
-            "<false/><!--AirportBrcmFixup-->",
-            "<true/><!--AirportBrcmFixup-->"
-        )
-        Versions.plist_data = Versions.plist_data.replace(
-            "<false/><!--AirPortBrcmNIC_Injector-->",
-            "<true/><!--AirPortBrcmNIC_Injector-->"
-        )
-        if current_model in ModelArray.EthernetNvidia:
-            # Nvidia chipsets all have the same path to ARPT
-            Versions.plist_data = Versions.plist_data.replace(
-                "#PciRoot(0x0)/Pci(0x1C,0x1)/Pci(0x0,0x0)",
-                "PciRoot(0x0)/Pci(0x15,0x0)/Pci(0x0,0x0)"
-            )
-        if current_model in ("MacBookAir2,1", "MacBookAir3,1", "MacBookAir3,2" ):
-            Versions.plist_data = Versions.plist_data.replace(
-                "#PciRoot(0x0)/Pci(0x1C,0x1)/Pci(0x0,0x0)",
-                "PciRoot(0x0)/Pci(0x15,0x0)/Pci(0x0,0x0)"
-            )
-        elif current_model in ("iMac7,1", "iMac8,1" ):
-            Versions.plist_data = Versions.plist_data.replace(
-                "#PciRoot(0x0)/Pci(0x1C,0x1)/Pci(0x0,0x0)",
-                "PciRoot(0x0)/Pci(0x1C,0x4)/Pci(0x0,0x0)"
-            )
-        elif current_model in ("iMac13,1", "iMac13,2"):
-            Versions.plist_data = Versions.plist_data.replace(
-                "#PciRoot(0x0)/Pci(0x1C,0x1)/Pci(0x0,0x0)",
-                "PciRoot(0x0)/Pci(0x1C,0x3)/Pci(0x0,0x0)"
-            )
-        elif current_model in ("MacPro5,1"):
-            Versions.plist_data = Versions.plist_data.replace(
-                "#PciRoot(0x0)/Pci(0x1C,0x1)/Pci(0x0,0x0)",
-                "PciRoot(0x0)/Pci(0x1C,0x5)/Pci(0x0,0x0)"
-            )
+    def build_efi(self):
+        if not Path(Versions.build_path).exists():
+            Path(Versions.build_path).mkdir()
+            print("Created build folder")
         else:
-            # Assumes we have a laptop with Intel chipset
-            Versions.plist_data = Versions.plist_data.replace(
-                "#PciRoot(0x0)/Pci(0x1C,0x1)/Pci(0x0,0x0)",
-                "PciRoot(0x0)/Pci(0x1C,0x1)/Pci(0x0,0x0)"
-            )
-    if current_model in ModelArray.LegacyHID:
-        Versions.plist_data = Versions.plist_data.replace(
-            "<false/><!--IOHIDFamily-->",
-            "<true/><!--IOHIDFamily-->"
-        )
-    
-    usb_map_path = os.path.join(Versions.current_path, "payloads/Kexts/Maps/Zip/" "USB-Map-%s.zip" % current_model)
-    if os.path.exists(usb_map_path):
-        print("- Adding USB Map for %s" % current_model)
-        copy(usb_map_path, Versions.kext_path_build)
-        map_name = ("USB-Map-%s.kext" % current_model)
-        Versions.plist_data = Versions.plist_data.replace(
-            "USB-Map-SMBIOS.kext",
-            map_name
-        )
+            print("Build folder already present, skipping")
 
-def BuildGUI():
-    print("- Adding OpenCanopy GUI")
-    rmtree(Versions.gui_path_build)
-    copy(Versions.gui_path, Versions.plist_path_build)
-    Versions.plist_data = Versions.plist_data.replace(
-        "#OpenCanopy.efi",
-        "OpenCanopy.efi"
-    )
+        if Path(Versions.opencore_path_build).exists():
+            print("Deleting old copy of OpenCore zip")
+            Path(Versions.opencore_path_build).unlink()
+        if Path(Versions.opencore_path_done).exists():
+            print("Deleting old copy of OpenCore folder")
+            shutil.rmtree(Versions.opencore_path_done)
+        print()
+        print("- Adding OpenCore v" + Versions.opencore_version)
+        shutil.copy(Versions.opencore_path, Versions.build_path)
+        zipfile.ZipFile(Versions.opencore_path_build).extractall(Versions.build_path)
 
-def BuildSMBIOS():
-    # Set new SMBIOS
-    new_model = current_model
-    if current_model in ModelArray.MacBookAir61:
-        print("- Spoofing to MacBookAir6,1")
-        new_model = "MacBookAir6,1"
-    elif current_model in ModelArray.MacBookAir62:
-        print("- Spoofing to MacBookAir6,2")
-        new_model = "MacBookAir6,2"
-    elif current_model in ModelArray.MacBookPro111:
-        print("- Spoofing to MacBookPro11,1")
-        new_model = "MacBookPro11,1"
-    elif current_model in ModelArray.MacBookPro112:
-        print("- Spoofing to MacBookPro11,2")
-        new_model = "MacBookPro11,2"
-    elif current_model in ModelArray.Macmini71:
-        print("- Spoofing to Macmini7,1")
-        new_model = "Macmini7,1"
-    elif current_model in ModelArray.iMac151:
-        print("- Spoofing to iMac15,1")
-        new_model = "iMac15,1"
-    elif current_model in ModelArray.iMac144:
-        print("- Spoofing to iMac14,4")
-        new_model = "iMac14,4"
-    elif current_model in ModelArray.MacPro71:
-        print("- Spoofing to MacPro7,1")
-        new_model = "MacPro7,1"
+        print("- Adding config.plist for OpenCore")
+        # Setup config.plist for editing
+        shutil.copy(Versions.plist_path, Versions.plist_path_build)
+        self.config = plistlib.load(Path(Versions.plist_path_build_full).open("rb"))
 
-    # Grab serials from macserial
-    serialData = subprocess.Popen((r"./payloads/tools/macserial -g -m " + new_model + " -n 1").split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    serialData = serialData.stdout.read().strip().split(" | ")
+        for name, version, path in [("Lilu", Versions.airportbcrmfixup_version, Versions.lilu_path), ("WhateverGreen", Versions.whatevergreen_version, Versions.whatevergreen_path)]:
+            self.enable_kext(name, version, path)
 
-    # Patch SMBIOS
-    Versions.plist_data = Versions.plist_data.replace(
-        "iMac19,1",
-        new_model
-    )
+        for name, version, path, check in [
+            # CPU patches
+            ("AppleMCEReporterDisabler.kext", Versions.mce_version, Versions.mce_path, lambda: self.model in ModelArray.DualSocket),
+            ("AAAMouSSE.kext", Versions.mousse_version, Versions.mousse_path, lambda: self.model in ModelArray.SSEEmulator),
+            ("telemetrap.kext", Versions.telemetrap_version, Versions.telemetrap_path, lambda: self.model in ModelArray.MissingSSE42),
+            # Ethernet patches
+            ("nForceEthernet.kext", Versions.nforce_version, Versions.nforce_path, lambda: self.model in ModelArray.EthernetNvidia),
+            ("MarvelYukonEthernet.kext", Versions.marvel_version, Versions.marvel_path, lambda: self.model in ModelArray.EthernetMarvell),
+            ("CatalinaBCM5701Ethernet.kext", Versions.bcm570_version, Versions.bcm570_path, lambda: self.model in ModelArray.EthernetBroadcom),
+        ]:
+            self.enable_kext(name, version, path, check)
 
-    # Patch Number Serial
-    Versions.plist_data = Versions.plist_data.replace(
-        "W00000000001",
-        serialData[0]
-    )
-    # Patch MLB
-    Versions.plist_data = Versions.plist_data.replace(
-        "M0000000000000001",
-        serialData[1]
-    )
-        
-    # Patch UUID
-    uuidGen = subprocess.Popen(["uuidgen"], stdout=subprocess.PIPE).communicate()[0]
-    Versions.plist_data = Versions.plist_data.replace(
-        "00000000-0000-0000-0000-000000000000",
-        uuidGen
-    )
+        # WiFi patches
 
-def SavePlist():
-    with open(Versions.plist_path_build_full, 'w') as file:
-        file.write(Versions.plist_data)
+        if self.model in ModelArray.WifiAtheros:
+            self.enable_kext("IO80211HighSierra", Versions.io80211high_sierra_version, Versions.io80211high_sierra_path)
+            self.get_kext_by_bundle_path("IO80211HighSierra.kext/Contents/PlugIns/AirPortAtheros40.kext")["Enabled"] = True
 
-def CleanBuildFolder():
-    # Clean up Build Folder
-    print("")
-    print("Cleaning build folder")
-    os.chdir(Versions.kext_path_build)
-    for item in os.listdir(Versions.kext_path_build):
-        if item.endswith(".zip"):
-            file_name = os.path.abspath(item)
-            zip_ref = zipfile.ZipFile(file_name)
-            zip_ref.extractall(Versions.kext_path_build)
-            zip_ref.close()
-            os.remove(file_name)
-    # Clean up Python's unzip
-    if os.path.exists("__MACOSX"):
-        rmtree("__MACOSX")
-    os.chdir(Versions.plist_path_build)
-    os.chdir(Versions.plist_path_build)
-    for item in os.listdir(Versions.plist_path_build):
-        if item.endswith(".zip"):
-            file_name = os.path.abspath(item)
-            zip_ref = zipfile.ZipFile(file_name)
-            zip_ref.extractall(Versions.plist_path_build)
-            zip_ref.close()
-            os.remove(file_name)
-    if os.path.exists("__MACOSX"):
-        rmtree("__MACOSX")
-    os.chdir(Versions.build_path)
-    if os.path.exists("__MACOSX"):
-        rmtree("__MACOSX")
-    os.remove(Versions.opencore_path_build)
-    os.chdir(Versions.current_path)
+        if self.model in ModelArray.WifiBCM94331:
+            self.enable_kext("AirportBrcmFixup", Versions.airportbcrmfixup_version, Versions.airportbcrmfixup_path)
+            self.get_kext_by_bundle_path("AirportBrcmFixup.kext/Contents/PlugIns/AirPortBrcmNIC_Injector.kext")["Enabled"] = True
 
-def ListDiskutil():
-    DiskMenu = True
-    while DiskMenu:
-        os.system('clear')
-        print("Loading diskutil...(This may take some time)")
-        diskList = subprocess.Popen(["diskutil", "list"], stdout=subprocess.PIPE).communicate()[0]
-        print(diskList)
-        ChosenDisk = raw_input('Please select the disk you want to install OpenCore to(ie. disk1): ')
-        ChosenDisk = ChosenDisk + "s1"
-        print("Trying to mount %s" % ChosenDisk)
-        diskMount = subprocess.Popen(["sudo", "diskutil", "mount", ChosenDisk], stdout=subprocess.PIPE).communicate()[0]
-        print(diskMount)
-        DiskMenu = raw_input("Press any key to continue: ")
+            if current_model in ModelArray.EthernetNvidia:
+                # Nvidia chipsets all have the same path to ARPT
+                property_path = "PciRoot(0x0)/Pci(0x15,0x0)/Pci(0x0,0x0)"
+            if current_model in ("MacBookAir2,1", "MacBookAir3,1", "MacBookAir3,2"):
+                property_path = "PciRoot(0x0)/Pci(0x15,0x0)/Pci(0x0,0x0)"
+            elif current_model in ("iMac7,1", "iMac8,1"):
+                property_path = "PciRoot(0x0)/Pci(0x1C,0x4)/Pci(0x0,0x0)"
+            elif current_model in ("iMac13,1", "iMac13,2"):
+                property_path = "PciRoot(0x0)/Pci(0x1C,0x3)/Pci(0x0,0x0)"
+            elif current_model in ("MacPro5,1"):
+                property_path = "PciRoot(0x0)/Pci(0x1C,0x5)/Pci(0x0,0x0)"
+            else:
+                # Assumes we have a laptop with Intel chipset
+                property_path = "PciRoot(0x0)/Pci(0x1C,0x1)/Pci(0x0,0x0)"
+            print("- Applying fake ID for WiFi")
+            self.config["DeviceProperties"]["Add"][property_path] = {
+                "device-id": binascii.unhexlify("ba430000"),
+                "compatible": "pci14e4,43ba"
+            }
 
-def MoveOpenCore():
-    print("")
-    efiVol = "/Volumes/EFI"
-    if os.path.exists(efiVol):
-        print("Coping OpenCore onto Volumes/EFI")
-        if os.path.exists("/Volumes/EFI/EFI"):
-            print("Cleaning EFI folder")
-            rmtree("/Volumes/EFI/EFI")
-        if os.path.exists(Versions.opencore_path_done):
-            copy_tree(Versions.opencore_path_done, efiVol)
-            copy(Versions.icon_path, efiVol)
-            print("OpenCore transfer complete")
+        # HID patches
+        if self.model in ModelArray.LegacyHID:
+            print("- Adding IOHIDFamily patch")
+            self.get_item_by_kv(self.config["Kernel"]["Patch"], "Identifier", "com.apple.iokit.IOHIDFamily")["Enabled"] = True
+
+        map_name = f"USB-Map-{current_model}.zip"
+        usb_map_path = Path(Versions.current_path) / Path(f"payloads/Kexts/Maps/Zip/{map_name}")
+        if usb_map_path.exists():
+            print("- Adding USB Map")
+            shutil.copy(usb_map_path, Versions.kext_path_build)
+            self.get_kext_by_bundle_path("USB-Map-SMBIOS.kext")["BundlePath"] = map_name
+
+        # Add OpenCanopy
+        print("- Adding OpenCanopy GUI")
+        shutil.rmtree(Versions.gui_path_build)
+        shutil.copy(Versions.gui_path, Versions.plist_path_build)
+        self.config["UEFI"]["Drivers"] = ["OpenCanopy.efi", "OpenRuntime.efi"]
+
+    def set_smbios(self):
+        spoofed_model = self.model
+        if self.model in ModelArray.MacBookAir61:
+            print("- Spoofing to MacBookAir6,1")
+            spoofed_model = "MacBookAir6,1"
+        elif self.model in ModelArray.MacBookAir62:
+            print("- Spoofing to MacBookAir6,2")
+            spoofed_model = "MacBookAir6,2"
+        elif self.model in ModelArray.MacBookPro111:
+            print("- Spoofing to MacBookPro11,1")
+            spoofed_model = "MacBookPro11,1"
+        elif self.model in ModelArray.MacBookPro112:
+            print("- Spoofing to MacBookPro11,2")
+            spoofed_model = "MacBookPro11,2"
+        elif self.model in ModelArray.Macmini71:
+            print("- Spoofing to Macmini7,1")
+            spoofed_model = "Macmini7,1"
+        elif self.model in ModelArray.iMac151:
+            print("- Spoofing to iMac15,1")
+            spoofed_model = "iMac15,1"
+        elif self.model in ModelArray.iMac144:
+            print("- Spoofing to iMac14,4")
+            spoofed_model = "iMac14,4"
+        elif self.model in ModelArray.MacPro71:
+            print("- Spoofing to MacPro7,1")
+            spoofed_model = "MacPro7,1"
+        macserial_output = subprocess.run((f"./payloads/tools/macserial -g -m {spoofed_model} -n 1").split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        macserial_output = macserial_output.stdout.strip().split(" | ")
+        self.config["PlatformInfo"]["Generic"]["SystemProductName"] = spoofed_model
+        self.config["PlatformInfo"]["Generic"]["SystemSerialNumber"] = macserial_output[0]
+        self.config["PlatformInfo"]["Generic"]["MLB"] = macserial_output[1]
+        self.config["PlatformInfo"]["Generic"]["SystemUUID"] = str(uuid.uuid4()).upper()
+
+    @staticmethod
+    def get_item_by_kv(iterable, key, value):
+        item = None
+        for i in iterable:
+            if i[key] == value:
+                item = i
+                break
+        return item
+
+    def get_kext_by_bundle_path(self, bundle_path):
+        kext = self.get_item_by_kv(self.config["Kernel"]["Add"], "BundlePath", bundle_path)
+        if not kext:
+            print(f"- Could not find kext {bundle_path}!")
+            raise IndexError
+        return kext
+
+    def enable_kext(self, kext_name, kext_version, kext_path, check=False):
+        kext = self.get_kext_by_bundle_path(kext_name)
+
+        if callable(check) and not check():
+            # Check failed
+            return
+
+        print(f"- Adding {kext_name} {kext_version}")
+        shutil.copy(kext_path, Versions.kext_path_build)
+        kext["Enabled"] = True
+
+    def cleanup(self):
+        print("- Cleaning up files")
+        for kext in Path(Versions.kext_path_build).glob("*.zip"):
+            with zipfile.ZipFile(kext) as zip_file:
+                zip_file.extractall(Versions.kext_path_build)
+            kext.unlink()
+        shutil.rmtree((Path(Versions.kext_path_build) / Path("__MACOSX")), ignore_errors=True)
+
+        for item in Path(Versions.plist_path_build).glob("*.zip"):
+            with zipfile.ZipFile(item) as zip_file:
+                zip_file.extractall(Versions.plist_path_build)
+            item.unlink()
+        shutil.rmtree((Path(Versions.build_path) / Path("__MACOSX")), ignore_errors=True)
+        Path(Versions.opencore_path_build).unlink()
+
+    def copy_efi(self):
+        diskutil = subprocess.run("diskutil list".split(), stdout=subprocess.PIPE).stdout.decode().strip()
+        menu = utilities.TUIMenu(["Select Disk"], "Please select the disk you want to install OpenCore to(ie. disk1): ", in_between=diskutil, return_number_instead_of_direct_call=True, add_quit=False)
+        for disk in [i for i in Path("/dev").iterdir() if re.fullmatch("disk[0-9]+", i.stem)]:
+            menu.add_menu_option(disk.stem, key=disk.stem[4:])
+        disk_num = menu.start()
+        print(subprocess.run("sudo diskutil mount disk" + disk_num, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout)
+
+        utilities.cls()
+        utilities.header(["Copying OpenCore"])
+        efi_dir = Path("/Volumes/EFI")
+        if efi_dir.exists():
+            print("- Coping OpenCore onto EFI partition")
+            if (efi_dir / Path("EFI")).exists():
+                print("Removing preexisting EFI folder")
+                shutil.rmtree(efi_dir / Path("EFI"))
+            if Path(Versions.opencore_path_done).exists():
+                shutil.copytree(Versions.opencore_path_done, efi_dir)
+                shutil.copy(Versions.icon_path, efi_dir)
+                print("OpenCore transfer complete")
+                print("")
+        else:
+            print("Couldn't find EFI partition")
+            print("Please ensure your drive is formatted as GUID Partition Table")
             print("")
-    else:
-        print("Couldn't find EFI partition")
-        print("Please ensure your drive is formatted as GUID Partition Table")
-        print("")
 
 def MountOpenCore():
     subprocess.Popen((r"sudo diskutil mount $(nvram 4D1FDA02-38C7-4A6A-9CC6-4BCCA8B30102:boot-path | sed 's/.*GPT,\([^,]*\),.*/\1/')").split())
