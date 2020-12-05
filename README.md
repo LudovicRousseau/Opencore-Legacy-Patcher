@@ -1,14 +1,10 @@
 # OpenCore Legacy Patcher
 
+<img src="OC-Patcher.png" width="256">
+
 A python script for building and booting OpenCore on legacy Macs, see [Supported SMBIOS](#supported-smbios) on whether your model is supported.
 
-Current TO-DO's with this patcher:
-
-* [ ] Create macOS Installer
-* [ ] Legacy GPU Patches
-  * ie. 2011 and older
-* [ ] Legacy Audio Patches
-  * ie. 2011 and older
+See [here](https://github.com/dortania/Opencore-Legacy-Patcher/issues/1) for current TO-DOs on this patcher.
 
 ## Supported SMBIOS
 
@@ -102,3 +98,42 @@ Prerequists:
 4. Once finished, run option 2 a the main menu and install onto your desired drive
 
 Once you're done making your OpenCore installer, you can simply reboot holding the Option key. In the picker, you should see a new EFI Boot Option. Boot it and from there you'll be in the OpenCore picker.
+
+## How to uninstall OpenCore?
+
+To remve OpenCore is actually quite simply:
+
+1. Remove OpenCore either from the USB or internal drive
+  * You'll need to mount the drive's EFI partition, and delete the EFI folder
+  * [See here for example how to mount](https://dortania.github.io/OpenCore-Post-Install/universal/oc2hdd.html)
+2. Reset NVRAM
+  * [Reset NVRAM or PRAM on your Mac](https://support.apple.com/HT204063)
+
+## Troubleshooting
+
+Here are some common errors users may experience while using this patcher:
+
+* [Stuck on `This version of Mac OS X is not supported on this platform`](#stuck-on-this-version-of-mac-os-x-is-not-supported-on-this-platform)
+* [Cannot boot macOS without the USB](#cannot-boot-macos-without-the-usb)
+
+### Stuck on `This version of Mac OS X is not supported on this platform`
+
+This means macOS has detected a SMBIOS it does not support, to resolve this ensure you're booting OpenCore **before** the macOS installer in the boot picker. Reminder the option will be called `EFI Boot`
+
+Once you've booted OpenCore at least once, your hardware should now auto boot it until either NVRAM reset or you remove the drive with OpenCore installed.
+
+### Cannot boot macOS without the USB
+
+At this time, the OpenCore Patcher won't install macOS onto the internal drive itself during installs. Instead, you'll need to either [manually transfer](https://dortania.github.io/OpenCore-Post-Install/universal/oc2hdd.html) OpenCore to the internal drive's EFI or run this patcher's Option 2 again but select your internal drive.
+
+Reminder that once this is done, you'll need to select OpenCore in the boot picker again for your hardware to remenber this entry and auto boot from then on.
+
+### OpenCore won't show up in the boot picker
+
+If OpenCore refuses to show up in the boot picker even with the above troubleshooting step, you can try to disable SIP and run this command(With your EFI drive mounted):
+
+```sh
+sudo bless --verbose --file /Volumes/EFI/EFI/OC/Bootstrap/Bootstrap.efi --folder /Volumes/EFI/EFI/OC/Bootstrap --setBoot
+```
+
+* Note: NVRAM write is disabled with SIP, so disables SIP first before running

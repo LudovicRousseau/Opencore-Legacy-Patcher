@@ -7,7 +7,7 @@ from pathlib import Path
 
 from Resources import build, ModelArray, Versions, utilities
 
-PATCHER_VERSION = "0.0.1"
+PATCHER_VERSION = "0.0.5"
 
 
 class OpenCoreLegacyPatcher():
