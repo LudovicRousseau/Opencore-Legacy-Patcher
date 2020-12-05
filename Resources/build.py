@@ -103,6 +103,7 @@ class BuildOpenCore():
             print("- Adding USB Map")
             shutil.copy(usb_map_path, Versions.kext_path_build)
             self.get_kext_by_bundle_path("USB-Map-SMBIOS.kext")["BundlePath"] = map_name
+            self.get_kext_by_bundle_path("USB-Map-SMBIOS.kext")["Enabled"] = False
 
         if self.model in ModelArray.DualGPUPatch:
             print("- Adding dual GPU patch")
