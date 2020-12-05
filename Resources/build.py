@@ -21,6 +21,7 @@ class BuildOpenCore():
         Versions.opencore_version = version
 
     def build_efi(self):
+        utilities.cls()
         if not Path(Versions.build_path).exists():
             Path(Versions.build_path).mkdir()
             print("Created build folder")
@@ -194,6 +195,7 @@ class BuildOpenCore():
         self.build_efi()
         self.set_smbios()
         self.cleanup()
+        print("")
         print(f"Your OpenCore EFI has been built at: {Versions.opencore_path_done}")
         input("Press enter to go back")
 
@@ -244,7 +246,7 @@ class OpenCoreMenus():
                 f"Build OpenCore v{self.version} EFI",
                 "Selected Model: " + model
             ]
-            menu = utilities.TUIMenu(title, "Choose your fighter: ", auto_number=True)
+            menu = utilities.TUIMenu(title, "Please select an option: ", auto_number=True)
 
             options = [
                 ["Build OpenCore", lambda: BuildOpenCore(model, self.version).build_opencore()],
@@ -255,4 +257,4 @@ class OpenCoreMenus():
                 menu.add_menu_option(option[0], function=option[1])
 
             response = menu.start()
-            # response = utilities.menu(title, "zoomer, choose your fighter: ", options, auto_number=True, top_level=True)
+            # response = utilities.menu(title, "zoomer, Please select an option: ", options, auto_number=True, top_level=True)

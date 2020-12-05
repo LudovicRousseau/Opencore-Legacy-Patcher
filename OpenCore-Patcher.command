@@ -89,7 +89,7 @@ system_profiler SPHardwareDataType | grep 'Model Identifier'
             else:
                 in_between = ["This model is supported"]
 
-            menu = utilities.TUIMenu(title, "Choose your fighter: ", in_between=in_between, auto_number=True, top_level=True)
+            menu = utilities.TUIMenu(title, "Please select an option: ", in_between=in_between, auto_number=True, top_level=True)
 
             options = ([["Build OpenCore", self.build_opencore]] if ((self.custom_model or self.current_model) in ModelArray.SupportedSMBIOS) else []) + [
                 ["Install OpenCore to USB/internal drive", self.install_opencore],
@@ -101,7 +101,7 @@ system_profiler SPHardwareDataType | grep 'Model Identifier'
                 menu.add_menu_option(option[0], function=option[1])
 
             response = menu.start()
-            # response = utilities.menu(title, "zoomer, choose your fighter: ", options, auto_number=True, top_level=True)
+            # response = utilities.menu(title, "zoomer, Please select an option: ", options, auto_number=True, top_level=True)
 
         print("Bye")
 
