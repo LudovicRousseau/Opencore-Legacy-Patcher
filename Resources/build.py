@@ -3,29 +3,22 @@
 from __future__ import print_function
 
 import binascii
-import json
-import os
 import plistlib
+import re
 import shutil
 import subprocess
-import sys
 import uuid
 import zipfile
-from distutils.dir_util import copy_tree
 from pathlib import Path
 
 from Resources import ModelArray, Versions, utilities
-import re
-
-# Find SMBIOS of machine
-current_model = subprocess.Popen("system_profiler SPHardwareDataType".split(), stdout=subprocess.PIPE)
-current_model = [line.strip().split(": ", 1)[1] for line in current_model.stdout.read().split("\n") if line.strip().startswith("Model Identifier")][0]
 
 
 class BuildOpenCore():
-    def __init__(self, model):
+    def __init__(self, model, version):
         self.model = model
         self.config = None
+        Versions.opencore_version = version
 
     def build_efi(self):
         if not Path(Versions.build_path).exists():
@@ -40,6 +33,7 @@ class BuildOpenCore():
         if Path(Versions.opencore_path_done).exists():
             print("Deleting old copy of OpenCore folder")
             shutil.rmtree(Versions.opencore_path_done)
+
         print()
         print("- Adding OpenCore v" + Versions.opencore_version)
         shutil.copy(Versions.opencore_path, Versions.build_path)
@@ -62,6 +56,8 @@ class BuildOpenCore():
             ("nForceEthernet.kext", Versions.nforce_version, Versions.nforce_path, lambda: self.model in ModelArray.EthernetNvidia),
             ("MarvelYukonEthernet.kext", Versions.marvel_version, Versions.marvel_path, lambda: self.model in ModelArray.EthernetMarvell),
             ("CatalinaBCM5701Ethernet.kext", Versions.bcm570_version, Versions.bcm570_path, lambda: self.model in ModelArray.EthernetBroadcom),
+            # Legacy audio
+            ("VoodooHDA.kext", Versions.voodoohda_version, Versions.voodoohda_path, lambda: self.model in ModelArray.LegacyAudio)
         ]:
             self.enable_kext(name, version, path, check)
 
@@ -75,16 +71,16 @@ class BuildOpenCore():
             self.enable_kext("AirportBrcmFixup", Versions.airportbcrmfixup_version, Versions.airportbcrmfixup_path)
             self.get_kext_by_bundle_path("AirportBrcmFixup.kext/Contents/PlugIns/AirPortBrcmNIC_Injector.kext")["Enabled"] = True
 
-            if current_model in ModelArray.EthernetNvidia:
+            if self.model in ModelArray.EthernetNvidia:
                 # Nvidia chipsets all have the same path to ARPT
                 property_path = "PciRoot(0x0)/Pci(0x15,0x0)/Pci(0x0,0x0)"
-            if current_model in ("MacBookAir2,1", "MacBookAir3,1", "MacBookAir3,2"):
+            if self.model in ("MacBookAir2,1", "MacBookAir3,1", "MacBookAir3,2"):
                 property_path = "PciRoot(0x0)/Pci(0x15,0x0)/Pci(0x0,0x0)"
-            elif current_model in ("iMac7,1", "iMac8,1"):
+            elif self.model in ("iMac7,1", "iMac8,1"):
                 property_path = "PciRoot(0x0)/Pci(0x1C,0x4)/Pci(0x0,0x0)"
-            elif current_model in ("iMac13,1", "iMac13,2"):
+            elif self.model in ("iMac13,1", "iMac13,2"):
                 property_path = "PciRoot(0x0)/Pci(0x1C,0x3)/Pci(0x0,0x0)"
-            elif current_model in ("MacPro5,1"):
+            elif self.model in ("MacPro5,1"):
                 property_path = "PciRoot(0x0)/Pci(0x1C,0x5)/Pci(0x0,0x0)"
             else:
                 # Assumes we have a laptop with Intel chipset
@@ -100,18 +96,24 @@ class BuildOpenCore():
             print("- Adding IOHIDFamily patch")
             self.get_item_by_kv(self.config["Kernel"]["Patch"], "Identifier", "com.apple.iokit.IOHIDFamily")["Enabled"] = True
 
-        map_name = f"USB-Map-{current_model}.zip"
+        map_name = f"USB-Map-{self.model}.zip"
         usb_map_path = Path(Versions.current_path) / Path(f"payloads/Kexts/Maps/Zip/{map_name}")
         if usb_map_path.exists():
             print("- Adding USB Map")
             shutil.copy(usb_map_path, Versions.kext_path_build)
             self.get_kext_by_bundle_path("USB-Map-SMBIOS.kext")["BundlePath"] = map_name
 
+        if self.model in ModelArray.DualGPUPatch:
+            print("- Adding dual GPU patch")
+            self.config["NVRAM"]["Add"]["7C436110-AB2A-4BBB-A880-FE41995C9F82"]["boot-args"] += " agdpmod=pikera"
+
         # Add OpenCanopy
         print("- Adding OpenCanopy GUI")
         shutil.rmtree(Versions.gui_path_build)
         shutil.copy(Versions.gui_path, Versions.plist_path_build)
         self.config["UEFI"]["Drivers"] = ["OpenCanopy.efi", "OpenRuntime.efi"]
+
+        plistlib.dump(self.config, Path(Versions.plist_path_build_full).open("wb"), sort_keys=True)
 
     def set_smbios(self):
         spoofed_model = self.model
@@ -188,7 +190,13 @@ class BuildOpenCore():
         shutil.rmtree((Path(Versions.build_path) / Path("__MACOSX")), ignore_errors=True)
         Path(Versions.opencore_path_build).unlink()
 
-    def copy_efi(self):
+    def build_opencore(self):
+        self.build_efi()
+        self.set_smbios()
+        self.cleanup()
+
+    @staticmethod
+    def copy_efi():
         diskutil = subprocess.run("diskutil list".split(), stdout=subprocess.PIPE).stdout.decode().strip()
         menu = utilities.TUIMenu(["Select Disk"], "Please select the disk you want to install OpenCore to(ie. disk1): ", in_between=diskutil, return_number_instead_of_direct_call=True, add_quit=False)
         for disk in [i for i in Path("/dev").iterdir() if re.fullmatch("disk[0-9]+", i.stem)]:
@@ -214,5 +222,35 @@ class BuildOpenCore():
             print("Please ensure your drive is formatted as GUID Partition Table")
             print("")
 
-def MountOpenCore():
-    subprocess.Popen((r"sudo diskutil mount $(nvram 4D1FDA02-38C7-4A6A-9CC6-4BCCA8B30102:boot-path | sed 's/.*GPT,\([^,]*\),.*/\1/')").split())
+
+class OpenCoreMenus():
+    def __init__(self):
+        self.version = Versions.opencore_version
+
+    def change_opencore_version(self):
+        utilities.cls()
+        utilities.header(["Change OpenCore Version"])
+        print(f"\nCurrent OpenCore version: {self.version}\nSupported versions: 0.6.3, 0.6.4")
+        version = input("Please enter the desired OpenCore version: ").strip()
+        if version:
+            self.version = version
+
+    def build_opencore_menu(self, model):
+        response = None
+        while not (response and response == -1):
+            title = [
+                f"Build OpenCore v{self.version} EFI",
+                "Selected Model: " + model
+            ]
+            menu = utilities.TUIMenu(title, "Choose your fighter: ", auto_number=True)
+
+            options = [
+                ["Build OpenCore", lambda: BuildOpenCore(model, self.version).build_opencore()],
+                ["Change OpenCore Version", self.change_opencore_version],
+            ]
+
+            for option in options:
+                menu.add_menu_option(option[0], function=option[1])
+
+            response = menu.start()
+            # response = utilities.menu(title, "zoomer, choose your fighter: ", options, auto_number=True, top_level=True)
