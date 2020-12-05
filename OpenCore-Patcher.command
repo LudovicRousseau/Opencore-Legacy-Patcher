@@ -55,9 +55,9 @@ system_profiler SPHardwareDataType | grep 'Model Identifier'
         utilities.TUIOnlyPrint(["Credits"], "Press enter to go back\n",
                                ["""Many thanks to the following:
 
-  - Acidanthera:\t\tOpenCore, kexts and other tools
+  - Acidanthera:\tOpenCore, kexts and other tools
   - DhinakG:\t\tWriting and maintaining this patcher
-  - Khronokernel:\t\tWriting and maintaining this patcher
+  - Khronokernel:\tWriting and maintaining this patcher
   - Syncretic:\t\tAAAMouSSE and telemetrap
   - Slice:\t\tVoodooHDA"""]).start()
 
@@ -73,7 +73,7 @@ system_profiler SPHardwareDataType | grep 'Model Identifier'
                 in_between = [
                     'Your model is not supported by this patcher!',
                     '',
-                    'If you plan to create the USB for another machine, please select option 5'
+                    'If you plan to create the USB for another machine, please select option 3'
                 ]
             elif not self.custom_model and self.current_model in ("MacPro3,1", "iMac7,1") and \
                     "SSE4.1" not in subprocess.run("sysctl machdep.cpu.features".split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout.decode():
