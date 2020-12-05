@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from __future__ import print_function
 
@@ -64,14 +64,12 @@ system_profiler SPHardwareDataType | grep 'Model Identifier'
     def main_menu(self):
         response = None
         while not (response and response == -1):
-            model = self.custom_model or self.current_model
-
             title = [
                 "OpenCore Legacy Patcher v" + PATCHER_VERSION,
-                "Selected Model: " + model
+                "Selected Model: " + (self.custom_model or self.current_model)
             ]
 
-            if model not in ModelArray.SupportedSMBIOS:
+            if (self.custom_model or self.current_model) not in ModelArray.SupportedSMBIOS:
                 in_between = [
                     'Your model is not supported by this patcher!',
                     '',
@@ -93,8 +91,7 @@ system_profiler SPHardwareDataType | grep 'Model Identifier'
 
             menu = utilities.TUIMenu(title, "Choose your fighter: ", in_between=in_between, auto_number=True, top_level=True)
 
-            options = [
-                ["Build OpenCore", self.build_opencore],
+            options = ([["Build OpenCore", self.build_opencore]] if ((self.custom_model or self.current_model) in ModelArray.SupportedSMBIOS) else []) + [
                 ["Install OpenCore to USB/internal drive", self.install_opencore],
                 ["Change Model", self.change_model],
                 ["Credits", self.credits]

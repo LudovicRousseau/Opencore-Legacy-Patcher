@@ -44,10 +44,10 @@ class BuildOpenCore():
         shutil.copy(Versions.plist_path, Versions.plist_path_build)
         self.config = plistlib.load(Path(Versions.plist_path_build_full).open("rb"))
 
-        for name, version, path in [("Lilu", Versions.airportbcrmfixup_version, Versions.lilu_path), ("WhateverGreen", Versions.whatevergreen_version, Versions.whatevergreen_path)]:
-            self.enable_kext(name, version, path)
-
         for name, version, path, check in [
+            # Essential kexts
+            ("Lilu.kext", Versions.airportbcrmfixup_version, Versions.lilu_path, lambda: True),
+            ("WhateverGreen.kext", Versions.whatevergreen_version, Versions.whatevergreen_path, lambda: True),
             # CPU patches
             ("AppleMCEReporterDisabler.kext", Versions.mce_version, Versions.mce_path, lambda: self.model in ModelArray.DualSocket),
             ("AAAMouSSE.kext", Versions.mousse_version, Versions.mousse_path, lambda: self.model in ModelArray.SSEEmulator),
@@ -64,11 +64,11 @@ class BuildOpenCore():
         # WiFi patches
 
         if self.model in ModelArray.WifiAtheros:
-            self.enable_kext("IO80211HighSierra", Versions.io80211high_sierra_version, Versions.io80211high_sierra_path)
+            self.enable_kext("IO80211HighSierra.kext", Versions.io80211high_sierra_version, Versions.io80211high_sierra_path)
             self.get_kext_by_bundle_path("IO80211HighSierra.kext/Contents/PlugIns/AirPortAtheros40.kext")["Enabled"] = True
 
         if self.model in ModelArray.WifiBCM94331:
-            self.enable_kext("AirportBrcmFixup", Versions.airportbcrmfixup_version, Versions.airportbcrmfixup_path)
+            self.enable_kext("AirportBrcmFixup.kext", Versions.airportbcrmfixup_version, Versions.airportbcrmfixup_path)
             self.get_kext_by_bundle_path("AirportBrcmFixup.kext/Contents/PlugIns/AirPortBrcmNIC_Injector.kext")["Enabled"] = True
 
             if self.model in ModelArray.EthernetNvidia:
@@ -142,7 +142,7 @@ class BuildOpenCore():
             print("- Spoofing to MacPro7,1")
             spoofed_model = "MacPro7,1"
         macserial_output = subprocess.run((f"./payloads/tools/macserial -g -m {spoofed_model} -n 1").split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        macserial_output = macserial_output.stdout.strip().split(" | ")
+        macserial_output = macserial_output.stdout.decode().strip().split(" | ")
         self.config["PlatformInfo"]["Generic"]["SystemProductName"] = spoofed_model
         self.config["PlatformInfo"]["Generic"]["SystemSerialNumber"] = macserial_output[0]
         self.config["PlatformInfo"]["Generic"]["MLB"] = macserial_output[1]
@@ -194,15 +194,17 @@ class BuildOpenCore():
         self.build_efi()
         self.set_smbios()
         self.cleanup()
+        print(f"Your OpenCore EFI has been built at: {Versions.opencore_path_done}")
+        input("Press enter to go back")
 
     @staticmethod
     def copy_efi():
-        diskutil = subprocess.run("diskutil list".split(), stdout=subprocess.PIPE).stdout.decode().strip()
-        menu = utilities.TUIMenu(["Select Disk"], "Please select the disk you want to install OpenCore to(ie. disk1): ", in_between=diskutil, return_number_instead_of_direct_call=True, add_quit=False)
+        diskutil = [subprocess.run("diskutil list".split(), stdout=subprocess.PIPE).stdout.decode().strip()]
+        menu = utilities.TUIMenu(["Select Disk"], "Please select the disk you want to install OpenCore to: ", in_between=diskutil, return_number_instead_of_direct_call=True, add_quit=False)
         for disk in [i for i in Path("/dev").iterdir() if re.fullmatch("disk[0-9]+", i.stem)]:
             menu.add_menu_option(disk.stem, key=disk.stem[4:])
         disk_num = menu.start()
-        print(subprocess.run("sudo diskutil mount disk" + disk_num, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout)
+        print(subprocess.run(("sudo diskutil mount disk" + disk_num).split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout)
 
         utilities.cls()
         utilities.header(["Copying OpenCore"])
