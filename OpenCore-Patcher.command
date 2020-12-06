@@ -15,7 +15,7 @@ class OpenCoreLegacyPatcher():
         self.custom_model: str = None
         self.current_model: str = None
         opencore_model: str = subprocess.run("nvram 4D1FDA02-38C7-4A6A-9CC6-4BCCA8B30102:oem-product".split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout.decode()
-        if not opencore_model.startswith("NVRAM: Error getting variable"):
+        if not opencore_model.startswith("nvram: Error getting variable"):
             opencore_model = subprocess.run("nvram 4D1FDA02-38C7-4A6A-9CC6-4BCCA8B30102:oem-product".split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             opencore_model = [line.strip().split(":oem-product	", 1)[1] for line in opencore_model.stdout.decode().split("\n") if line.strip().startswith("4D1FDA02-38C7-4A6A-9CC6-4BCCA8B30102:")][0]
             self.current_model = opencore_model
