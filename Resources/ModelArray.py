@@ -60,7 +60,9 @@ SupportedSMBIOS = [
     "MacPro4,1",
     "MacPro5,1",
     # Xserve
-    "Xserve3,1"
+    "Xserve3,1",
+    # Test Configuration
+    "TestDummy1,1"
 ]
 
 ## CPU patches
@@ -87,18 +89,21 @@ MissingSSE42 = [
     "iMac8,1",
     "iMac9,1",
     "iMac10,1",
-    "MacPro3,1"
+    "MacPro3,1",
+    "TestDummy1,1"
 ]
 
 SSEEmulator = [
-    "MacPro3,1"
+    "MacPro3,1",
+    "TestDummy1,1"
 ]
 
 DualSocket = [
     "MacPro3,1",
     "MacPro4,1",
     "MacPro5,1",
-    "Xserve3,1"
+    "Xserve3,1",
+    "TestDummy1,1"
 ]
 
 pciSSDT = [
@@ -106,7 +111,8 @@ pciSSDT = [
     "MacBookPro6,2",
     "iMac11,1",
     "iMac11,2",
-    "iMac11,3"
+    "iMac11,3",
+    "TestDummy1,1"
 ]
 
 ## Ethernet patches
@@ -125,13 +131,15 @@ EthernetNvidia = [
     "Macmini3,1",
     "Macmini4,1",
     "iMac9,1",
-    "iMac10,1"
+    "iMac10,1",
+    "TestDummy1,1"
 ]
 EthernetMarvell = [
     "MacBookPro3,1",
     "MacBookPro4,1",
     "iMac7,1",
-    "iMac8,1"
+    "iMac8,1",
+    "TestDummy1,1"
 ]
 EthernetBroadcom = [
     "MacBookPro6,1",
@@ -146,7 +154,8 @@ EthernetBroadcom = [
     "iMac11,2",
     "iMac11,3",
     "iMac12,1",
-    "iMac12,2"
+    "iMac12,2",
+    "TestDummy1,1"
 ]
 
 ## Wifi patches
@@ -160,14 +169,16 @@ WifiAtheros = [
     "iMac12,1",
     "iMac12,2",
     "MacPro3,1",
-    "MacPro4,1"
+    "MacPro4,1",
+    "TestDummy1,1"
 ]
 
 WifiBCM94328 = [
     "MacBookAir2,1",
     "MacBookPro4,1",
     "iMac7,1",
-    "iMac8,1"
+    "iMac8,1",
+    "TestDummy1,1"
 
 ]
 
@@ -186,6 +197,7 @@ WifiBCM94322 = [
     "MacBookPro5,4",
     "MacBookPro5,5",
     "MacBookPro7,1",
+    "TestDummy1,1"
 ]
 
 WifiBCM943224 = [
@@ -195,6 +207,7 @@ WifiBCM943224 = [
     "MacBookPro6,2",
     "Macmini3,1",
     "Macmini4,1",
+    "TestDummy1,1"
 ]
 
 WifiBCM94331 = [
@@ -236,7 +249,8 @@ WifiBCM94331 = [
     "iMac9,1",       # PciRoot(0x0)/Pci(0x15,0x0)/Pci(0x0,0x0)
     "iMac13,1",      # PciRoot(0x0)/Pci(0x1C,0x3)/Pci(0x0,0x0)
     "iMac13,2",      # PciRoot(0x0)/Pci(0x1C,0x3)/Pci(0x0,0x0)
-    "MacPro5,1"      # PciRoot(0x0)/Pci(0x1C,0x5)/Pci(0x0,0x0)
+    "MacPro5,1",     # PciRoot(0x0)/Pci(0x1C,0x5)/Pci(0x0,0x0)
+    "TestDummy1,1"
 ]
 
 ## Audio
@@ -278,7 +292,8 @@ LegacyAudio = [
     "iMac11,3",
     "iMac12,1",
     "iMac12,2",
-    "MacPro3,1"
+    "MacPro3,1",
+    "TestDummy1,1"
 ]
 
 ## GPU
@@ -319,7 +334,8 @@ LegacyGPU = [
     "iMac11,2",
     "iMac11,3",
     "iMac12,1",
-    "iMac12,2"
+    "iMac12,2",
+    "TestDummy1,1"
 ]
 
 LegacyHID = [
@@ -343,12 +359,15 @@ LegacyHID = [
     "iMac8,1",
     "iMac9,1",
     "iMac10,1",
+    "MacPro3,1",
+    "TestDummy1,1"
 ]
 
 NVMePatch = [
-    "MacPro3,1"
-    "MacPro4,1"
-    "Xserve3,1"
+    "MacPro3,1",
+    "MacPro4,1",
+    "Xserve3,1",
+    "TestDummy1,1"
 ]
 
 SidecarPatch = [
@@ -364,7 +383,8 @@ SidecarPatch = [
     "iMac13,2",
     "iMac14,1",
     "iMac14,2",
-    "iMac14,3"
+    "iMac14,3",
+    "TestDummy1,1"
 ]
 
 DualGPUPatch = [
@@ -385,6 +405,7 @@ DualGPUPatch = [
     "iMac13,2",
     "iMac14,2",
     "iMac14,3",
+    "TestDummy1,1"
 ]
 
 # 11" Air
@@ -472,5 +493,6 @@ MacPro71 = [
     "MacPro3,1",
     "MacPro4,1",
     "MacPro5,1",
-    "Xserve3,1"
+    "Xserve3,1",
+    "TestDummy1,1"
 ]

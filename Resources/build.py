@@ -47,8 +47,9 @@ class BuildOpenCore():
 
         for name, version, path, check in [
             # Essential kexts
-            ("Lilu.kext", Versions.airportbcrmfixup_version, Versions.lilu_path, lambda: True),
+            ("Lilu.kext", Versions.lilu_version, Versions.lilu_path, lambda: True),
             ("WhateverGreen.kext", Versions.whatevergreen_version, Versions.whatevergreen_path, lambda: True),
+            ("RestrictEvents.kext", Versions.restrictevents_version, Versions.restrictevents_path, lambda: True),
             # CPU patches
             ("AppleMCEReporterDisabler.kext", Versions.mce_version, Versions.mce_path, lambda: self.model in ModelArray.DualSocket),
             ("AAAMouSSE.kext", Versions.mousse_version, Versions.mousse_path, lambda: self.model in ModelArray.SSEEmulator),
@@ -97,13 +98,20 @@ class BuildOpenCore():
             print("- Adding IOHIDFamily patch")
             self.get_item_by_kv(self.config["Kernel"]["Patch"], "Identifier", "com.apple.iokit.IOHIDFamily")["Enabled"] = True
 
+        # SSDT patches
+        if self.model in ModelArray.pciSSDT:
+            print("- Adding SSDT-CPBG.aml")
+            self.get_item_by_kv(self.config["ACPI"]["Add"], "Path", "SSDT-CPBG.aml")["Enabled"] = True
+
+        # USB map
         map_name = f"USB-Map-{self.model}.zip"
+        map_entry = f"USB-Map-{self.model}.kext"
         usb_map_path = Path(Versions.current_path) / Path(f"payloads/Kexts/Maps/Zip/{map_name}")
         if usb_map_path.exists():
-            print("- Adding USB Map")
+            print(f"- Adding {map_entry}")
             shutil.copy(usb_map_path, Versions.kext_path_build)
-            self.get_kext_by_bundle_path("USB-Map-SMBIOS.kext")["BundlePath"] = map_name
             self.get_kext_by_bundle_path("USB-Map-SMBIOS.kext")["Enabled"] = True
+            self.get_kext_by_bundle_path("USB-Map-SMBIOS.kext")["BundlePath"] = map_entry
 
         if self.model in ModelArray.DualGPUPatch:
             print("- Adding dual GPU patch")
@@ -197,7 +205,9 @@ class BuildOpenCore():
         self.set_smbios()
         self.cleanup()
         print("")
-        print(f"Your OpenCore EFI has been built at: {Versions.opencore_path_done}")
+        print("Your OpenCore EFI has been built at:")
+        print(f"    {Versions.opencore_path_done}")
+        print("")
         input("Press enter to go back")
 
     @staticmethod
